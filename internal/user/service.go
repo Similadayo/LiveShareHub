@@ -2,9 +2,11 @@ package user
 
 import (
 	"errors"
+	"time"
 	"unicode"
 
 	"github.com/similadayo/pkg/logging"
+	"github.com/similadayo/pkg/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -20,25 +22,26 @@ func NewService(repository *Repository, logger *logging.Logger) *Service {
 	}
 }
 
-func (s *Service) CreateUser(username, password, email, firstname, lastname string) (User, error) {
+func (s *Service) CreateUser(username, password, email, firstname, lastname, avaterurl string) (User, error) {
 	if err := validatePasswordStrength(password); err != nil {
+		return User{}, err
+	}
+
+	hashedPassword, err := hashedPassword(password)
+	if err != nil {
 		return User{}, err
 	}
 
 	user := User{
 		UserName:  username,
-		Password:  password,
+		Password:  hashedPassword,
 		Email:     email,
 		FirstName: firstname,
 		LastName:  lastname,
+		AvatarURL: avaterurl,
+		Created:   time.Now(),
+		Updated:   time.Now(),
 	}
-
-	hashedPassword, err := hashedPassword(password)
-	if err != nil {
-		return user, err
-	}
-
-	user.Password = hashedPassword
 
 	createdUser, err := s.Repository.Register(user)
 	if err != nil {
@@ -46,6 +49,26 @@ func (s *Service) CreateUser(username, password, email, firstname, lastname stri
 	}
 
 	return createdUser, nil
+}
+
+func (s *Service) AuthenticateUser(username, password string) (string, error) {
+	user, err := s.Repository.GetUserByUserName(username)
+	if err != nil {
+		return "", err
+	}
+
+	err = CompareHashedPassword(password, user.Password)
+	if err != nil {
+		return "", err
+	}
+
+	token, err := utils.GenerateToken(user.ID)
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
+
 }
 
 func (s *Service) GetUser(email, password string) (User, error) {
@@ -62,7 +85,14 @@ func (s *Service) GetUser(email, password string) (User, error) {
 	return user, nil
 }
 
+// Get user by ID and return user after checking authentication
 func (s *Service) GetUserByID(userID string) (User, error) {
+	//check for token and validate
+	userID, err := utils.ValidateToken(userID)
+	if err != nil {
+		return User{}, err
+	}
+
 	user, err := s.Repository.GetUserByID(userID)
 	if err != nil {
 		return user, err

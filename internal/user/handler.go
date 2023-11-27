@@ -1,13 +1,24 @@
 package user
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
+var (
+	ErrUserNotFound = errors.New("user not found")
+
+	ErrInvalidPassword = errors.New("invalid password")
+)
+
 type Handler struct {
 	Service *Service
+}
+
+type LoginResponse struct {
+	AccessToken string `json:"access_token"`
 }
 
 func NewHandler(service *Service) *Handler {
@@ -28,7 +39,7 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	userInput, err := h.Service.CreateUser(user.UserName, user.Password, user.Email, user.FirstName, user.LastName)
+	userInput, err := h.Service.CreateUser(user.UserName, user.Password, user.Email, user.FirstName, user.LastName, user.AvatarURL)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"errors": err.Error(),
@@ -42,40 +53,49 @@ func (h *Handler) Register(c *gin.Context) {
 	})
 }
 
-// GetUserByIDHandler retrieves a user by ID.
-func (h *Handler) GetUserByIDHandler(c *gin.Context) {
-	userID := c.Param("id")
+func (h *Handler) Login(c *gin.Context) {
+	var userInput User
 
-	user, err := h.Service.GetUserByID(userID)
+	err := c.ShouldBindJSON(&userInput)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"errors": err.Error(),
 		})
 
 		return
+	}
+
+	token, err := h.Service.AuthenticateUser(userInput.UserName, userInput.Password)
+	{
+		if errors.Is(err, ErrUserNotFound) {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"errors": err.Error(),
+			})
+
+			return
+		}
+		if errors.Is(err, ErrInvalidPassword) {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"errors": err.Error(),
+			})
+
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data": user,
+		"data": LoginResponse{
+			AccessToken: token,
+		},
 	})
+
 }
 
-// GetUserHandler retrieves a user by email and password.
-func (h *Handler) GetUserHandler(c *gin.Context) {
-	var user User
-
-	err := c.ShouldBindJSON(&user)
+// GetUser returns the user and checks authentication.
+func (h *Handler) GetUserByIDHandler(c *gin.Context) {
+	user, err := h.Service.GetUserByID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"errors": err.Error(),
-		})
-
-		return
-	}
-
-	user, err = h.Service.GetUser(user.Email, user.Password)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"errors": err.Error(),
 		})
 

@@ -8,6 +8,7 @@ import (
 	"github.com/go-playground/validator"
 	"github.com/similadayo/internal/user"
 	"github.com/similadayo/pkg/logging"
+	"github.com/similadayo/pkg/utils"
 	limit "github.com/yangxikun/gin-limit-by-key"
 	"golang.org/x/time/rate"
 )
@@ -102,7 +103,7 @@ func AuthMiddleWare(userService *user.Service) gin.HandlerFunc {
 			return
 		}
 
-		userID, err := ValidateToken(token)
+		userID, err := utils.ValidateToken(token)
 		if err != nil {
 			c.AbortWithStatusJSON(401, gin.H{
 				"error": "unauthorized",

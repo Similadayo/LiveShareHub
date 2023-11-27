@@ -40,6 +40,7 @@ func main() {
 		userRoutes := api.Group("/users")
 		{
 			userRoutes.POST("/", userHandler.Register)
+			userRoutes.POST("/login", userHandler.Login)
 		}
 	}
 
@@ -49,7 +50,7 @@ func main() {
 	{
 		userRoutes := apiAuth.Group("/users")
 		{
-			userRoutes.POST("/", userHandler.GetUserByIDHandler)
+			userRoutes.POST("/:id", userHandler.GetUserByIDHandler)
 		}
 	}
 
