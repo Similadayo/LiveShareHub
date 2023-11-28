@@ -1,6 +1,5 @@
 # Real-Time Collaboration Platform
 
-
 ## Overview
 
 The Real-Time Collaboration Platform is a microservices-based project that facilitates seamless collaboration among users. It supports real-time synchronization of changes, making it ideal for applications such as document editing, code collaboration, and collaborative drawing.
