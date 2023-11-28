@@ -1,6 +1,5 @@
 # Real-Time Collaboration Platform
 
-![Project Logo or Screenshot]
 
 ## Overview
 
