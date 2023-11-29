@@ -1,9 +1,11 @@
 package user
 
-import "time"
+import (
+	"time"
+)
 
 type User struct {
-	ID             string          `gorm:"primaryKey;autoIncrement" json:"id"`
+	ID             string          `json:"id" gorm:"primary_key;type:varchar(36)"`
 	UserName       string          `json:"userName"`
 	Password       string          `json:"password"`
 	Email          string          `json:"email"`

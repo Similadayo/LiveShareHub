@@ -2,11 +2,12 @@ package auth
 
 import (
 	"context"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator"
-	"github.com/similadayo/internal/user"
 	"github.com/similadayo/pkg/logging"
 	"github.com/similadayo/pkg/utils"
 	limit "github.com/yangxikun/gin-limit-by-key"
@@ -93,33 +94,40 @@ func SecurityHeadersMiddleware() gin.HandlerFunc {
 }
 
 // AuthMiddleWare checks if the user is authenticated.
-func AuthMiddleWare(userService *user.Service) gin.HandlerFunc {
+func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.GetHeader("Authorization")
-		if token == "" {
-			c.AbortWithStatusJSON(401, gin.H{
-				"error": "unauthorized",
-			})
+		//Extract token from the authorization header
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
+			c.Abort()
 			return
 		}
 
-		userID, err := utils.ValidateToken(token)
+		// Check if the token is in the correct format
+		parts := strings.Fields(authHeader)
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
+			c.Abort()
+			return
+		}
+
+		tokenString := parts[1]
+
+		//Validate token
+		claims, err := utils.ValidateToken(tokenString)
 		if err != nil {
-			c.AbortWithStatusJSON(401, gin.H{
-				"error": "unauthorized",
+			c.JSON(401, gin.H{
+				"errors": err.Error(),
 			})
+			c.Abort()
+
 			return
 		}
 
-		user, err := userService.Repository.GetUserByID(userID)
-		if err != nil {
-			c.AbortWithStatusJSON(401, gin.H{
-				"error": "unauthorized",
-			})
-			return
-		}
+		//Attach UserID to the context for further Processing
+		c.Set("user_id", claims.UserID)
 
-		c.Set("user", user)
 		c.Next()
 	}
 }

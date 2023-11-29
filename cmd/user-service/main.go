@@ -21,7 +21,12 @@ func main() {
 	}
 
 	//auto migrate db
-	db.AutoMigrate(&user.User{})
+	err = db.AutoMigrate(&user.User{})
+	if err != nil {
+		logger.Fatal("failed to migrate database", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
 
 	//Initialize gin router
 	r := gin.Default()
@@ -32,9 +37,10 @@ func main() {
 	userHandler := user.NewHandler(userService)
 
 	// initialize auth package
-	authService := auth.AuthMiddleWare(userService)
+	authService := auth.AuthMiddleware()
 
 	//API Routes
+	r.Use(auth.LoggerMiddleWare(logger))
 	api := r.Group("/api")
 	{
 		userRoutes := api.Group("/users")
@@ -50,7 +56,12 @@ func main() {
 	{
 		userRoutes := apiAuth.Group("/users")
 		{
-			userRoutes.POST("/:id", userHandler.GetUserByIDHandler)
+			userRoutes.GET("/user/:username", userHandler.GetUserByUserNameHandler)
+			userRoutes.GET("/:id", userHandler.GetUserByIDHandler)
+			userRoutes.PUT("/:id", userHandler.UpdateUserHandler)
+			userRoutes.DELETE("/:id", userHandler.DeleteUserHandler)
+			userRoutes.GET("/profile", userHandler.GetUserProfileHandler)
+			userRoutes.GET("/filter/:user", userHandler.FilterUserByNameHandler)
 		}
 	}
 

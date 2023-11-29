@@ -5,6 +5,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/google/uuid"
 	"github.com/similadayo/pkg/logging"
 	"github.com/similadayo/pkg/utils"
 	"golang.org/x/crypto/bcrypt"
@@ -13,6 +14,10 @@ import (
 type Service struct {
 	Repository *Repository
 	logger     *logging.Logger
+}
+
+func generateUUID() string {
+	return uuid.New().String()
 }
 
 func NewService(repository *Repository, logger *logging.Logger) *Service {
@@ -33,6 +38,7 @@ func (s *Service) CreateUser(username, password, email, firstname, lastname, ava
 	}
 
 	user := User{
+		ID:        generateUUID(),
 		UserName:  username,
 		Password:  hashedPassword,
 		Email:     email,
@@ -71,13 +77,8 @@ func (s *Service) AuthenticateUser(username, password string) (string, error) {
 
 }
 
-func (s *Service) GetUser(email, password string) (User, error) {
-	user := User{
-		Email:    email,
-		Password: password,
-	}
-
-	user, err := s.Repository.GetUser(user)
+func (s *Service) GetUserProfile(userID string) (User, error) {
+	user, err := s.Repository.GetUserProfile(userID)
 	if err != nil {
 		return user, err
 	}
@@ -87,18 +88,52 @@ func (s *Service) GetUser(email, password string) (User, error) {
 
 // Get user by ID and return user after checking authentication
 func (s *Service) GetUserByID(userID string) (User, error) {
-	//check for token and validate
-	userID, err := utils.ValidateToken(userID)
-	if err != nil {
-		return User{}, err
-	}
-
 	user, err := s.Repository.GetUserByID(userID)
 	if err != nil {
 		return user, err
 	}
 
 	return user, nil
+}
+
+// Get user by username and return user after checking authentication
+func (s *Service) GetUserByUserName(userName string) (User, error) {
+	user, err := s.Repository.GetUserByUserName(userName)
+	if err != nil {
+		return user, err
+	}
+
+	return user, nil
+}
+
+// Update User
+func (s *Service) UpdateUser(user User) (User, error) {
+	user, err := s.Repository.UpdateUser(user)
+	if err != nil {
+		return user, err
+	}
+
+	return user, nil
+}
+
+// Delete User
+func (s *Service) DeleteUser(userID string) error {
+	err := s.Repository.DeleteUser(userID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Filter User by name
+func (s *Service) FilterUserByName(userName string) ([]User, error) {
+	users, err := s.Repository.FilterUserByName(userName)
+	if err != nil {
+		return users, err
+	}
+
+	return users, nil
 }
 
 func hashedPassword(password string) (string, error) {

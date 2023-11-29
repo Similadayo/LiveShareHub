@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"errors"
 	"os"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 )
@@ -9,34 +11,40 @@ import (
 var secretKey = []byte(os.Getenv("SECRET_KEY"))
 
 type Claims struct {
-	UserID string `json:"user_id"`
+	UserID   string `json:"user_id"`
+	UserName string `json:"user_name"`
 	jwt.StandardClaims
 }
 
 func GenerateToken(userID string) (string, error) {
-	claims := &Claims{
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		UserID: userID,
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	return token.SignedString(secretKey)
-}
-
-func ValidateToken(token string) (string, error) {
-	claims := &Claims{}
-
-	tkn, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
-		return secretKey, nil
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
+		},
 	})
 
+	tokenString, err := token.SignedString(secretKey)
 	if err != nil {
 		return "", err
 	}
 
-	if !tkn.Valid {
-		return "", nil
+	return tokenString, nil
+}
+
+func ValidateToken(tokenString string) (*Claims, error) {
+	//parse token
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		return secretKey, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	return tkn.Claims.(*Claims).UserID, nil
+	//validate token
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, errors.New("invalid token")
 }
