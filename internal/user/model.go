@@ -23,6 +23,7 @@ type Collaboration struct {
 	Name      string     `json:"name"`
 	Created   time.Time  `json:"created"`
 	Updated   time.Time  `json:"updated"`
+	Users     []User     `json:"user" gorm:"many2many:user_collaborations;"`
 	Documents []Document `json:"documents" gorm:"many2many:collaboration_documents;"`
 }
 
